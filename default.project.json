@@ -1,0 +1,18 @@
+{
+	"name": "RbxAWS",
+	"tree": {
+		"$className": "DataModel",
+		"ServerStorage": {
+			"$className": "ServerStorage",
+			"RbxAWS": {
+				"$path": "src"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"RbxAWSTest": {
+				"$path": "test"
+			}
+		}
+	}
+}
