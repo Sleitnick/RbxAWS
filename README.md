@@ -2,7 +2,7 @@
 
 # RbxAWS
 
-An AWS SDK for Roblox.
+Unofficial AWS SDK for Roblox.
 
 ## !! WARNING !!
 **This library is under development and should not be used.**
@@ -25,3 +25,16 @@ An AWS SDK for Roblox.
 | SNS        | ➖ |
 | SQS        | ➖ |
 | SES        | ➖ |
+
+------------------------------------
+
+This project wouldn't be possible without the following:
+
+### [HashLib](https://www.roblox.com/library/4544052033/HashLib)
+- Authors: Egor Skriptunoff, _boatbomber_ (Roblox), _howmanysmalls_ (Roblox)
+- HMAC, SHA-1, and MD5 operations for authentication.
+- This is an open-source module under MIT provided by Roblox user boatbomber, and is based off of Egor Skriptunoff's [Pure Lua SHA](https://github.com/Egor-Skriptunoff/pure_lua_SHA) project.
+
+### [Promise](https://github.com/evaera/roblox-lua-promise)
+- Author: Eryn L. K. (_evaera_)
+- Promise implementation for Roblox

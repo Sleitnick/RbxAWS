@@ -247,6 +247,8 @@ stds.roblox = {
 		warn = empty;
 
 		-- Libraries
+		bit32 = def_fields({"arshift", "band", "bnot", "bor", "btest", "bxor", "extract", "replace", "lrotate", "lshift", "rrotate", "rshift"}),
+
 		math = def_fields({"abs", "acos", "asin", "atan", "atan2", "ceil", "clamp", "cos", "cosh",
 			"deg", "exp", "floor", "fmod", "frexp", "ldexp", "log", "log10", "max", "min", "modf",
 			"noise", "pow", "rad", "random", "randomseed", "sign", "sin", "sinh", "sqrt", "tan",
