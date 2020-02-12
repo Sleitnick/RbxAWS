@@ -24,3 +24,4 @@ An AWS SDK for Roblox.
 | CloudTrail | ➖ |
 | SNS        | ➖ |
 | SQS        | ➖ |
+| SES        | ➖ |
