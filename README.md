@@ -1,3 +1,5 @@
+![Logo](/imgs/logo_medium.png)
+
 # RbxAWS
 
 An AWS SDK for Roblox.
