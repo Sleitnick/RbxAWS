@@ -36,5 +36,9 @@ s3:ListBuckets()
 	:Then(function(res)
 		print(res.Body)
 	end):Catch(function(res)
-		warn(res.StatusCode .. ": " .. res.StatusMessage .. "\n\n" .. res.Body)
+		if (type(res) == "string") then
+			warn(res)
+		else
+			warn(res.StatusCode .. ": " .. res.StatusMessage .. "\n\n" .. res.Body)
+		end
 	end)

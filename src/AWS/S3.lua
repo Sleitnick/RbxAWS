@@ -30,12 +30,16 @@ function S3.new()
 	return self
 end
 
+function S3:_HttpRequest(req)
+	return self.AWS.Http:Request(req, "s3")
+end
+
 function S3:ListObjects(bucketName)
 	error("Not yet implemented")
 end
 
 function S3:ListBuckets()
-	return self.AWS.Http:Request {
+	return self:_HttpRequest {
 		Url = "https://" .. self.API.Metadata.GlobalEndpoint .. self.API.Operations.ListBuckets.Http.RequestUri;
 		Method = self.API.Operations.ListBuckets.Http.Method;
 	}
