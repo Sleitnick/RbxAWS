@@ -1,6 +1,6 @@
 --[[
 	
-	Http:Request()
+	Http:Request(request)
 
 ]]
 
@@ -15,9 +15,34 @@ local hashLib
 local b64
 
 
+local function EncodeUri(str)
+	return httpService:UrlEncode(str)
+end
+
+local function Trim(str)
+	return str:match("^%s*(.-)%s*$")
+end
+
+
 function Http:Request(req)
 	return Promise.Async(function(resolve, reject)
+		if (not req.Headers) then
+			req.Headers = {}
+		end
+		local configProfile = self.AWS.Config.Default
+		-- https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html
+		req.Headers.Date = tostring(Date.new()) --"Wed, 28 Mar 2007 01:29:59 +0000"
+		req.Headers.Authorization = self:_BuildAuthorizationHeader(
+			configProfile.AccessKeyId,
+			configProfile.SecretAccessKey,
+			req.Method or "GET",
+			req.Headers,
+			req.Body,
+			req.Headers["Content-Type"],
+			req.Headers.Date
+		)
 		local success, res = pcall(function()
+			self.AWS.TableUtil.Print(req, "Request", true)
 			return httpService:RequestAsync(req)
 		end)
 		if (success and res.Success) then
@@ -29,60 +54,45 @@ function Http:Request(req)
 end
 
 
-function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpVerb, headers, content, contentType)
+function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod, uri, queryString, headers, signedHeaders, content, contentType, date)
 
-	-- https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
-	--[[
+	-- https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
+	-- https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 
-		Authorization = "AWS" + " " + AWSAccessKeyId + ":" + Signature;
+	-- Build canonical URI:
+	if ((not uri) or uri == "") then uri = "/" end
+	local canonicalUri = EncodeUri(uri)
 
-		Signature = Base64( HMAC-SHA1( YourSecretAccessKey, UTF-8-Encoding-Of( StringToSign ) ) );
+	-- Build canonical query string:
+	local canonicalQueryString = ""
 
-		StringToSign = HTTP-Verb + "\n" +
-			Content-MD5 + "\n" +
-			Content-Type + "\n" +
-			Date + "\n" +
-			CanonicalizedAmzHeaders +
-			CanonicalizedResource;
-
-		CanonicalizedResource = [ "/" + Bucket ] +
-			<HTTP-Request-URI, from the protocol name up to the query string> +
-			[ subresource, if present. For example "?acl", "?location", "?logging", or "?torrent"];
-
-		CanonicalizedAmzHeaders = <described in link at top>
-
-	]]
-
-	local date = tostring(Date.new())
-	local contentMd5 = (content and hashLib.md5(content) or "")
-
-	-- Canonicalized Resource remains blank unless using virtualized endpoints
-	local canonicalizedResource = ""
-
-	-- Build canonicalized headers:
-	local canonicalizedAmzHeaders
-	local headersArray = {}
+	-- Build canonical headers:
+	local canonicalHeaders = {}
 	if (headers) then
-		for key,val in pairs(headers) do
-			if (key:sub(1, 6):lower() == "x-amz-") then
-				table.insert(headersArray, key:lower() .. ":" .. val)
-			end
+		for header,value in pairs(headers) do
+			table.insert(canonicalHeaders, {header:lower(), Trim(value)})
 		end
+		table.sort(canonicalHeaders, function(a, b)
+			return (a[1] < b[1])
+		end)
+		for i,h in ipairs(canonicalHeaders) do
+			canonicalHeaders[i] = (h[1] .. ":" .. h[2])
+		end
+		canonicalHeaders = table.concat(canonicalHeaders, "\n")
 	end
-	table.sort(headersArray, function(a, b) return a:match("(.-):") < b:match("(.-):") end)
-	canonicalizedAmzHeaders = table.concat(headersArray, "\n")
 
-	-- Build StringToSign:
-	local stringToSign = httpVerb .. "\n" .. contentMd5 .. "\n" .. (contentType or "") .. "\n" ..
-							date .. "\n" .. canonicalizedAmzHeaders .. canonicalizedResource
+	-- Build signed headers:
+	if (not signedHeaders) then
+		signedHeaders = {}
+	end
+	for i,v in ipairs(signedHeaders) do
+		signedHeaders[i] = v:lower()
+	end
+	signedHeaders = table.concat(signedHeaders, ";")
 
-	-- Hash and encode signature:
-	local signature = b64:Encode(hashLib.hmac(hashLib.sha1, secretAccessKey, stringToSign))
+	local hashedPayload = hashLib.sha256(content or "")
 
-	-- Create authorization header value:
-	local authorization = "AWS " .. accessKeyId .. ":" .. signature
-
-	return authorization
+	local canonicalRequest = ("%s\n%s\n%s\n%s\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
 
 end
 

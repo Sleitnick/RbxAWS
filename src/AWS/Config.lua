@@ -76,6 +76,9 @@ function Config:Init()
 
 	tableUtil = self.AWS.TableUtil
 	profiles.Default = tableUtil.Copy(profileTemplate)
+	profiles.Test = tableUtil.Copy(profileTemplate)
+	profiles.Test.AccessKeyId = "AKIAIOSFODNN7EXAMPLE"
+	profiles.Test.SecretAccessKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 	local awsCreds = game:GetService("ServerStorage"):FindFirstChild("AWSCredentials")
 	if (awsCreds) then

@@ -35,7 +35,10 @@ function S3:ListObjects(bucketName)
 end
 
 function S3:ListBuckets()
-	error("Not yet implemented")
+	return self.AWS.Http:Request {
+		Url = "https://" .. self.API.Metadata.GlobalEndpoint .. self.API.Operations.ListBuckets.Http.RequestUri;
+		Method = self.API.Operations.ListBuckets.Http.Method;
+	}
 end
 
 return S3

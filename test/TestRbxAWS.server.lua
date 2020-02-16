@@ -1,9 +1,6 @@
-local AWS = require(game:GetService("ServerStorage").RbxAWS.AWS)
+local AWS = require(game:GetService("ServerStorage").RbxAWS.AWS:Clone())
 
 AWS.Config:SetDefaultRegion("us-east-2")
-
---local s3 = AWS.S3.new()
---local buckets = s3:ListBuckets()
 
 --[[
 -- TEST AUTH:
@@ -17,6 +14,7 @@ local auth = AWS.Http:BuildAuthorizationHeader(accessKeyId, secretAccessKey, htt
 print(auth)
 ]]
 
+--[[
 local req = {
 	Url = "https://www.google.com";
 	Method = "GET";
@@ -30,4 +28,13 @@ AWS.Http:Request(req)
 	:Catch(function(res)
 		print("FAILURE")
 		warn(res.StatusCode .. ": " .. res.StatusMessage)
+	end)
+]]
+
+local s3 = AWS.S3.new()
+s3:ListBuckets()
+	:Then(function(res)
+		print(res.Body)
+	end):Catch(function(res)
+		warn(res.StatusCode .. ": " .. res.StatusMessage .. "\n\n" .. res.Body)
 	end)
