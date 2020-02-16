@@ -39,7 +39,7 @@ function Http:Request(req, awsService)
 		local hashedPayload = hashLib.sha256(req.Body or "")
 		req.Headers["x-amz-date"] = date:ToISO()
 		req.Headers["x-amz-content-sha256"] = hashedPayload
-		req.Headers["x-amz-signedheaders"] = "x-amz-date"
+		req.Headers["x-amz-signedheaders"] = "x-amz-date;host"
 		local startAuth = tick()
 		req.Headers.Authorization = self:_BuildAuthorizationHeader(
 			configProfile.AccessKeyId,
@@ -48,11 +48,11 @@ function Http:Request(req, awsService)
 			"",
 			"",
 			req.Headers,
-			{"x-amz-date"},
+			{"x-amz-date", "x-amz-signedheaders", "host"},
 			hashedPayload,
 			req.Headers["Content-Type"],
 			date,
-			configProfile.DefaultRegion,
+			awsService == "s3" and "us-east-1" or configProfile.DefaultRegion,
 			awsService
 		)
 		local authDur = (tick() - startAuth)
