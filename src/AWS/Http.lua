@@ -142,9 +142,9 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	local signature = self:_BuildAuthSignature(secretAccessKey, stringToSign, date, region, awsService)
 	print("Signature", signature)
 
-	local auth = ("AWS4-HMAC-SHA256 Credentials=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signedHeaders)
+	local auth = ("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signedHeaders)
 	print("Auth", auth)
-	
+
 	return auth
 
 end
