@@ -36,12 +36,15 @@ function Http:Request(req, awsService)
 		local configProfile = self.AWS.Config.Default
 		-- https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html
 		local date = Date.new()
-		req.Headers.Date = date:ToISO()
+		req.Headers["x-amz-date"] = date:ToISO()
 		req.Headers.Authorization = self:_BuildAuthorizationHeader(
 			configProfile.AccessKeyId,
 			configProfile.SecretAccessKey,
 			req.Method or "GET",
+			"",
+			"",
 			req.Headers,
+			{["x-amz-date"] = req.Headers["x-amz-date"]},
 			req.Body,
 			req.Headers["Content-Type"],
 			date,
@@ -62,8 +65,11 @@ end
 
 
 function Http:_BuildAuthStringToSign(canonicalRequest, date, scope)
+	print("_BuildAuthStringToSign")
 	local req = hashLib.sha256(canonicalRequest)
+	print("Req", req)
 	local timestamp = date:ToISO()
+	print("Timestamp", timestamp)
 	local stringToSign = ("AWS4-HMAC-SHA256\n%s\n%s\n%s"):format(timestamp, scope, req)
 	return stringToSign
 end
@@ -85,9 +91,12 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	-- https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
 	-- https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 
+	print("_BuildAuthorizationHeader")
+
 	-- Build canonical URI:
 	if ((not uri) or uri == "") then uri = "/" end
 	local canonicalUri = EncodeUri(uri)
+	print("CanonicalUri", canonicalUri)
 
 	-- Build canonical query string:
 	local canonicalQueryString = ""
@@ -105,7 +114,10 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 			canonicalHeaders[i] = (h[1] .. ":" .. h[2])
 		end
 		canonicalHeaders = table.concat(canonicalHeaders, "\n")
+	else
+		canonicalHeaders = ""
 	end
+	print("CanonicalHeaders", canonicalHeaders)
 
 	-- Build signed headers:
 	if (not signedHeaders) then
@@ -115,14 +127,22 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 		signedHeaders[i] = v:lower()
 	end
 	signedHeaders = table.concat(signedHeaders, ";")
+	print("SignedHeaders", signedHeaders)
 
 	-- Hash payload:
 	local hashedPayload = hashLib.sha256(content or "")
+	print("HashedPayload", hashedPayload)
 
 	-- Build signature:
 	local canonicalRequest = ("%s\n%s\n%s\n%s\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
+	print("CanonicalRequest", canonicalRequest)
+	print("Date", date)
+	local scope = date:YMD() .. "/" .. region .. "/" .. awsService .. "/aws4_request"
+	print("Scope", scope)
 	local stringToSign = self:_BuildAuthStringToSign(canonicalRequest, date, scope)
+	print("StringToSign", stringToSign)
 	local signature = self:_BuildAuthSignature(secretAccessKey, stringToSign, date, region, awsService)
+	print("Signature", signature)
 
 	return signature
 
