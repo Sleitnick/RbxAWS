@@ -48,7 +48,7 @@ function Http:Request(req, awsService)
 			"",
 			"",
 			req.Headers,
-			{"host", "x-amz-date"},
+			{"host", "x-amz-date", "x-amz-content-sha256"},
 			hashedPayload,
 			req.Headers["Content-Type"],
 			date,
@@ -96,18 +96,15 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	-- https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
 	-- https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 
-	print("_BuildAuthorizationHeader")
-
 	-- Build canonical URI:
 	if ((not uri) or uri == "") then uri = "/" end
 	local canonicalUri = uri--EncodeUri(uri)
-	print("CanonicalUri", canonicalUri)
 
 	-- Build canonical query string:
 	local canonicalQueryString = ""
 
 	-- Build canonical headers:
-	local canonicalHeaders = {host = awsService .. ".amazonaws.com"}
+	local canonicalHeaders = {{"host", awsService .. ".amazonaws.com"}}
 	if (headers) then
 		for header,value in pairs(headers) do
 			table.insert(canonicalHeaders, {header:lower(), Trim(value)})
@@ -118,11 +115,8 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 		for i,h in ipairs(canonicalHeaders) do
 			canonicalHeaders[i] = (h[1] .. ":" .. h[2])
 		end
-		canonicalHeaders = table.concat(canonicalHeaders, "\n")
-	else
-		canonicalHeaders = ""
 	end
-	print("CanonicalHeaders", canonicalHeaders)
+	canonicalHeaders = table.concat(canonicalHeaders, "\n")
 
 	-- Build signed headers:
 	if (not signedHeaders) then
@@ -133,15 +127,14 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	end
 	table.sort(signedHeaders, function(a, b) return a < b end)
 	signedHeaders = table.concat(signedHeaders, ";")
-	print("SignedHeaders", signedHeaders)
 
 	-- Build signature:
 	local canonicalRequest = ("%s\n%s\n%s\n%s\n\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
-	print("CanonicalRequest", canonicalRequest)
+	print("CanonicalRequest\n", canonicalRequest, "\n")
 	local stringToSign, scope = self:_BuildAuthStringToSign(canonicalRequest, date, region, awsService)
-	print("StringToSign", stringToSign)
+	print("StringToSign\n", stringToSign, "\n")
 	local signature = self:_BuildAuthSignature(secretAccessKey, stringToSign, date, region, awsService)
-	print("Signature", signature)
+	print("Signature\n", signature, "\n")
 
 	local auth = ("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signature)
 	print("Auth", auth)
