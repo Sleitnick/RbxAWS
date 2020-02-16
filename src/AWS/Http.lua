@@ -39,7 +39,7 @@ function Http:Request(req, awsService)
 		local hashedPayload = hashLib.sha256(req.Body or "")
 		req.Headers["x-amz-date"] = date:ToISO()
 		req.Headers["x-amz-content-sha256"] = hashedPayload
-		req.Headers["x-amz-signedheaders"] = "x-amz-date;host"
+		--req.Headers["x-amz-signedheaders"] = "host;x-amz-date"
 		local startAuth = tick()
 		req.Headers.Authorization = self:_BuildAuthorizationHeader(
 			configProfile.AccessKeyId,
@@ -48,7 +48,7 @@ function Http:Request(req, awsService)
 			"",
 			"",
 			req.Headers,
-			{"x-amz-date", "x-amz-signedheaders", "host"},
+			{"host", "x-amz-date"},
 			hashedPayload,
 			req.Headers["Content-Type"],
 			date,
@@ -70,11 +70,13 @@ function Http:Request(req, awsService)
 end
 
 
-function Http:_BuildAuthStringToSign(canonicalRequest, date, scope)
+function Http:_BuildAuthStringToSign(canonicalRequest, date, region, awsService)
+	-- TODO: AWS is getting a different result for the hash of the canonical request:
+	local scope = date:YMD() .. "/" .. region .. "/" .. awsService .. "/aws4_request"
 	local req = hashLib.sha256(canonicalRequest)
 	local timestamp = date:ToISO()
 	local stringToSign = ("AWS4-HMAC-SHA256\n%s\n%s\n%s"):format(timestamp, scope, req)
-	return stringToSign
+	return stringToSign, scope
 end
 
 
@@ -105,7 +107,7 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	local canonicalQueryString = ""
 
 	-- Build canonical headers:
-	local canonicalHeaders = {}
+	local canonicalHeaders = {host = awsService .. ".amazonaws.com"}
 	if (headers) then
 		for header,value in pairs(headers) do
 			table.insert(canonicalHeaders, {header:lower(), Trim(value)})
@@ -129,20 +131,19 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	for i,v in ipairs(signedHeaders) do
 		signedHeaders[i] = v:lower()
 	end
+	table.sort(signedHeaders, function(a, b) return a < b end)
 	signedHeaders = table.concat(signedHeaders, ";")
 	print("SignedHeaders", signedHeaders)
 
 	-- Build signature:
 	local canonicalRequest = ("%s\n%s\n%s\n%s\n\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
 	print("CanonicalRequest", canonicalRequest)
-	local scope = date:YMD() .. "/" .. region .. "/" .. awsService .. "/aws4_request"
-	print("Scope", scope)
-	local stringToSign = self:_BuildAuthStringToSign(canonicalRequest, date, scope)
+	local stringToSign, scope = self:_BuildAuthStringToSign(canonicalRequest, date, region, awsService)
 	print("StringToSign", stringToSign)
 	local signature = self:_BuildAuthSignature(secretAccessKey, stringToSign, date, region, awsService)
 	print("Signature", signature)
 
-	local auth = ("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signedHeaders)
+	local auth = ("AWS4-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signature)
 	print("Auth", auth)
 
 	return auth
