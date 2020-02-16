@@ -23,8 +23,8 @@ local function Trim(str)
 	return str:match("^%s*(.-)%s*$")
 end
 
-local function HMACSHA256(a, b)
-	return hashLib.hmac(hashLib.sha256, a, b)
+local function HMAC_SHA256(key, msg)
+	return hashLib.hmac(hashLib.sha256, key, msg)
 end
 
 
@@ -36,7 +36,11 @@ function Http:Request(req, awsService)
 		local configProfile = self.AWS.Config.Default
 		-- https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html
 		local date = Date.new()
+		local hashedPayload = hashLib.sha256(req.Body or "")
 		req.Headers["x-amz-date"] = date:ToISO()
+		req.Headers["x-amz-content-sha256"] = hashedPayload
+		req.Headers["x-amz-signedheaders"] = "x-amz-date"
+		local startAuth = tick()
 		req.Headers.Authorization = self:_BuildAuthorizationHeader(
 			configProfile.AccessKeyId,
 			configProfile.SecretAccessKey,
@@ -44,13 +48,15 @@ function Http:Request(req, awsService)
 			"",
 			"",
 			req.Headers,
-			{["x-amz-date"] = req.Headers["x-amz-date"]},
-			req.Body,
+			{"x-amz-date"},
+			hashedPayload,
 			req.Headers["Content-Type"],
 			date,
 			configProfile.DefaultRegion,
 			awsService
 		)
+		local authDur = (tick() - startAuth)
+		print(("Calculated auth in %ims"):format(authDur * 1000))
 		local success, res = pcall(function()
 			self.AWS.TableUtil.Print(req, "Request", true)
 			return httpService:RequestAsync(req)
@@ -65,11 +71,8 @@ end
 
 
 function Http:_BuildAuthStringToSign(canonicalRequest, date, scope)
-	print("_BuildAuthStringToSign")
 	local req = hashLib.sha256(canonicalRequest)
-	print("Req", req)
 	local timestamp = date:ToISO()
-	print("Timestamp", timestamp)
 	local stringToSign = ("AWS4-HMAC-SHA256\n%s\n%s\n%s"):format(timestamp, scope, req)
 	return stringToSign
 end
@@ -77,16 +80,16 @@ end
 
 function Http:_BuildAuthSignature(secretAccesKey, stringToSign, date, region, awsService)
 	local ymd = date:YMD()
-	local dateKey = HMACSHA256("AWS4" .. secretAccesKey, ymd)
-	local dateRegionKey = HMACSHA256(dateKey, region)
-	local dateRegionServiceKey = HMACSHA256(dateRegionKey, awsService)
-	local signingKey = HMACSHA256(dateRegionServiceKey, "aws4_request")
-	local signature = HMACSHA256(signingKey, stringToSign)
+	local dateKey = HMAC_SHA256("AWS4" .. secretAccesKey, ymd)
+	local dateRegionKey = HMAC_SHA256(dateKey, region)
+	local dateRegionServiceKey = HMAC_SHA256(dateRegionKey, awsService)
+	local signingKey = HMAC_SHA256(dateRegionServiceKey, "aws4_request")
+	local signature = HMAC_SHA256(signingKey, stringToSign)
 	return signature
 end
 
 
-function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod, uri, queryString, headers, signedHeaders, content, contentType, date, region, awsService)
+function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod, uri, queryString, headers, signedHeaders, hashedPayload, contentType, date, region, awsService)
 
 	-- https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
 	-- https://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
@@ -95,7 +98,7 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 
 	-- Build canonical URI:
 	if ((not uri) or uri == "") then uri = "/" end
-	local canonicalUri = EncodeUri(uri)
+	local canonicalUri = uri--EncodeUri(uri)
 	print("CanonicalUri", canonicalUri)
 
 	-- Build canonical query string:
@@ -129,14 +132,9 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	signedHeaders = table.concat(signedHeaders, ";")
 	print("SignedHeaders", signedHeaders)
 
-	-- Hash payload:
-	local hashedPayload = hashLib.sha256(content or "")
-	print("HashedPayload", hashedPayload)
-
 	-- Build signature:
-	local canonicalRequest = ("%s\n%s\n%s\n%s\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
+	local canonicalRequest = ("%s\n%s\n%s\n%s\n\n%s\n%s"):format(httpMethod, canonicalUri, canonicalQueryString, canonicalHeaders, signedHeaders, hashedPayload)
 	print("CanonicalRequest", canonicalRequest)
-	print("Date", date)
 	local scope = date:YMD() .. "/" .. region .. "/" .. awsService .. "/aws4_request"
 	print("Scope", scope)
 	local stringToSign = self:_BuildAuthStringToSign(canonicalRequest, date, scope)
@@ -144,7 +142,10 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 	local signature = self:_BuildAuthSignature(secretAccessKey, stringToSign, date, region, awsService)
 	print("Signature", signature)
 
-	return signature
+	local auth = ("AWS4-HMAC-SHA256 Credentials=%s/%s, SignedHeaders=%s, Signature=%s"):format(accessKeyId, scope, signedHeaders, signedHeaders)
+	print("Auth", auth)
+	
+	return auth
 
 end
 
