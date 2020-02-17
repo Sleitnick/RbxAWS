@@ -1,6 +1,6 @@
 --[[
 	
-	Http:Request(request)
+	Http:Request(request, awsService)
 	Http:JSONEncode(tbl)
 	Http:JSONDecode(str)
 
@@ -39,9 +39,9 @@ function Http:Request(req, awsService)
 			req.Headers = {}
 		end
 		local configProfile = self.AWS.Config.Default
-		-- https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html
 		local date = Date.new()
 		local hashedPayload = hashLib.sha256(req.Body or "")
+		-- https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html
 		req.Headers["x-amz-date"] = date:ToISO()
 		req.Headers["x-amz-content-sha256"] = hashedPayload
 		--req.Headers["x-amz-signedheaders"] = "host;x-amz-date"
@@ -50,8 +50,8 @@ function Http:Request(req, awsService)
 			configProfile.AccessKeyId,
 			configProfile.SecretAccessKey,
 			req.Method or "GET",
-			"",
-			"",
+			req.Uri,
+			req.Query,
 			req.Headers,
 			{"host", "x-amz-date", "x-amz-content-sha256"},
 			hashedPayload,
@@ -63,8 +63,13 @@ function Http:Request(req, awsService)
 		local authDur = (tick() - startAuth)
 		print(("Calculated auth in %ims"):format(authDur * 1000))
 		local success, res = pcall(function()
-			self.AWS.TableUtil.Print(req, "Request", true)
-			return httpService:RequestAsync(req)
+			local httpRequest = {
+				Method = req.Method;
+				Url = ("https://" .. req.Endpoint .. req.Uri);
+				Headers = req.Headers;
+			}
+			self.AWS.TableUtil.Print(httpRequest, "Request", true)
+			return httpService:RequestAsync(httpRequest)
 		end)
 		if (success and res.Success) then
 			resolve(res)

@@ -31,14 +31,36 @@ AWS.Http:Request(req)
 	end)
 ]]
 
+--[=[
+local xml = [[
+<people>
+  <person type="natural">
+    <name>Manoel</name>
+    <city>Palmas-TO</city>
+  </person>
+  <person type="legal">
+    <name>University of Brasília</name>
+    <city>Brasília-DF</city>
+  </person>
+</people>
+]]
+local handler = AWS.XML2Lua.XmlHandler.Tree
+local parser = AWS.XML2Lua.parser(handler)
+parser:parse(xml)
+
+for i,p in pairs(handler.root.people.person) do
+	print(i, "Name:", p.name, "City:", p.city, "Type:", p._attr.type)
+end
+]=]
+
+
 local s3 = AWS.S3.new()
 s3:ListBuckets()
 	:Then(function(res)
-		print(res.Body)
-	end):Catch(function(res)
-		if (type(res) == "string") then
-			warn(res)
-		else
-			warn(res.StatusCode .. ": " .. res.StatusMessage .. "\n\n" .. res.Body)
+		local buckets = res.Buckets.Bucket
+		for _,bucket in ipairs(buckets) do
+			print(bucket.Name)
 		end
+	end):Catch(function(res)
+		warn(res)
 	end)

@@ -39,10 +39,19 @@ function S3:ListObjects(bucketName)
 end
 
 function S3:ListBuckets()
-	return self:_HttpRequest {
-		Url = "https://" .. self.API.Metadata.GlobalEndpoint .. self.API.Operations.ListBuckets.Http.RequestUri;
+	return self:_HttpRequest({
+		Endpoint = self.API.Metadata.GlobalEndpoint;
+		Uri = self.API.Operations.ListBuckets.Http.RequestUri;
+		Query = "";
 		Method = self.API.Operations.ListBuckets.Http.Method;
-	}
+	}):Then(function(res)
+		local xml = res.Body
+		local handler = self.AWS.XML2Lua.XmlHandler.Tree
+		local parser = self.AWS.XML2Lua.parser(handler)
+		parser:parse(xml)
+		print(xml)
+		return handler.root.ListAllMyBucketsResult
+	end)
 end
 
 return S3

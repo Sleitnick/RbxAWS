@@ -28,6 +28,8 @@ Unofficial AWS SDK for Roblox.
 
 ------------------------------------
 
+## Third-Party Libraries
+
 This project wouldn't be possible without the following:
 
 ### [HashLib](https://www.roblox.com/library/4544052033/HashLib)
@@ -38,3 +40,8 @@ This project wouldn't be possible without the following:
 ### [Promise](https://github.com/evaera/roblox-lua-promise)
 - Author: Eryn L. K. (_evaera_)
 - Promise implementation for Roblox
+
+### [xml2lua](https://github.com/manoelcampos/xml2lua)
+- Author: Manoel Campos da Silva Filho
+- Parse XML to Lua tables
+- License: MIT
