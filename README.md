@@ -16,7 +16,7 @@ Unofficial AWS SDK for Roblox.
 
 | Feature    | Status |
 | ---------- | ------ |
-| S3         | ➖ |
+| S3         | 🔷 |
 | EC2        | ➖ |
 | Lambda     | ➖ |
 | DynamoDB   | ➖ |
