@@ -1,6 +1,8 @@
 --[[
 	
 	Http:Request(request)
+	Http:JSONEncode(tbl)
+	Http:JSONDecode(str)
 
 ]]
 
@@ -143,6 +145,16 @@ function Http:_BuildAuthorizationHeader(accessKeyId, secretAccessKey, httpMethod
 
 	return auth
 
+end
+
+
+function Http:JSONEncode(tbl)
+	return httpService:JSONEncode(tbl)
+end
+
+
+function Http:JSONDecode(str)
+	return httpService:JSONDecode(str)
 end
 
 
