@@ -12,7 +12,6 @@ local httpService = game:GetService("HttpService")
 local Date
 local Promise
 local hashLib
-local b64
 
 
 local function EncodeUri(str)
@@ -148,7 +147,6 @@ function Http:Init()
 	Date = self.AWS.Date
 	Promise = self.AWS.Promise
 	hashLib = self.AWS.HashLib
-	b64 = self.AWS.Base64.new()
 end
 
 
