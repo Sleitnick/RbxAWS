@@ -26,6 +26,10 @@ local function HMAC_SHA256(key, msg)
 	return hashLib.hmac(hashLib.sha256, key, msg)
 end
 
+local function HMAC_SHA256_BIN(key, msg)
+	return hashLib.hex_to_bin(HMAC_SHA256(key, msg))
+end
+
 
 function Http:Request(req, awsService)
 	return Promise.Async(function(resolve, reject)
@@ -70,7 +74,6 @@ end
 
 
 function Http:_BuildAuthStringToSign(canonicalRequest, date, region, awsService)
-	-- TODO: AWS is getting a different result for the hash of the canonical request:
 	local scope = date:YMD() .. "/" .. region .. "/" .. awsService .. "/aws4_request"
 	local req = hashLib.sha256(canonicalRequest)
 	local timestamp = date:ToISO()
@@ -81,10 +84,10 @@ end
 
 function Http:_BuildAuthSignature(secretAccesKey, stringToSign, date, region, awsService)
 	local ymd = date:YMD()
-	local dateKey = HMAC_SHA256("AWS4" .. secretAccesKey, ymd)
-	local dateRegionKey = HMAC_SHA256(dateKey, region)
-	local dateRegionServiceKey = HMAC_SHA256(dateRegionKey, awsService)
-	local signingKey = HMAC_SHA256(dateRegionServiceKey, "aws4_request")
+	local dateKey = HMAC_SHA256_BIN("AWS4" .. secretAccesKey, ymd)
+	local dateRegionKey = HMAC_SHA256_BIN(dateKey, region)
+	local dateRegionServiceKey = HMAC_SHA256_BIN(dateRegionKey, awsService)
+	local signingKey = HMAC_SHA256_BIN(dateRegionServiceKey, "aws4_request")
 	local signature = HMAC_SHA256(signingKey, stringToSign)
 	return signature
 end
