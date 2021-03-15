@@ -2,7 +2,7 @@
 
 # RbxAWS
 
-Unofficial AWS SDK for Roblox.
+Unofficial and incomplete AWS SDK for Roblox.
 
 ## !! WARNING !!
 **This library is under development and should not be used.**
